@@ -1,14 +1,11 @@
-import './App.css'
+import "./App.css";
 
 function App() {
-
   return (
     <>
-      <div className=''>
-
-      </div>
+      <h1 className="text-3xl justify-center text-center">AppliFind</h1>
     </>
-  )
+  );
 }
 
-export default App
+export default App;
