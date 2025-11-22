@@ -22,24 +22,54 @@ L.Icon.Default.mergeOptions({
     "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png",
 });
 
-// Custom icons
-const createCustomIcon = (color: string) => {
+// Custom SVG icons for markers
+const createSvgIcon = (bgColor: string, svgInner: string) => {
+  const svg = `
+    <svg width="34" height="42" viewBox="0 0 34 42" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <filter id="s" x="-50%" y="-50%" width="200%" height="200%">
+          <feDropShadow dx="0" dy="1" stdDeviation="1" flood-opacity="0.25"/>
+        </filter>
+      </defs>
+      <g filter="url(#s)">
+        <path d="M17 0 C26 0 34 8 34 17 C34 28 17 42 17 42 C17 42 0 28 0 17 C0 8 8 0 17 0 Z" fill="${bgColor}" />
+        ${svgInner}
+      </g>
+    </svg>
+  `;
+
   return L.divIcon({
     className: "custom-marker",
-    html: `<div style="background-color: ${color}; width: 25px; height: 41px; border-radius: 50% 50% 50% 0; transform: rotate(-45deg); border: 2px solid white; box-shadow: 0 2px 5px rgba(0,0,0,0.3);"><div style="width: 10px; height: 10px; background: white; border-radius: 50%; position: absolute; top: 6px; left: 6px;"></div></div>`,
-    iconSize: [25, 41],
-    iconAnchor: [12, 41],
+    html: `<div style="width:34px;height:42px;display:flex;align-items:center;justify-content:center">${svg}</div>`,
+    iconSize: [34, 42],
+    iconAnchor: [17, 42],
   });
 };
 
-const microwaveIcon = createCustomIcon("#ef4444");
-const fridgeIcon = createCustomIcon("#3b82f6");
+// Microwave icon (simple microwave door + waves)
+const microwaveSvgInner = `
+  <rect x="6" y="10" width="22" height="16" rx="2" fill="white" opacity="0.95" />
+  <rect x="8" y="12" width="6" height="12" rx="1" fill="#f3f4f6" />
+  <g fill="none" stroke="#ef4444" stroke-width="1.6" stroke-linecap="round">
+    <path d="M16 20c1-1 3-1 4 0" />
+    <path d="M16 23c1-1 3-1 4 0" />
+  </g>
+`;
+
+// Fridge icon (tall fridge with handle)
+const fridgeSvgInner = `
+  <rect x="8" y="6" width="18" height="28" rx="2" fill="white" opacity="0.95" />
+  <rect x="8" y="18" width="18" height="4" fill="#e6edf8" />
+  <rect x="24" y="12" width="2" height="6" rx="1" fill="#cbd5e1" />
+`;
+
+const microwaveIcon = createSvgIcon("#ef4444", microwaveSvgInner);
+const fridgeIcon = createSvgIcon("#3b82f6", fridgeSvgInner);
 
 interface Appliance {
   id: string;
   type: "Microwave" | "Fridge";
   building: string;
-  distance: string;
   confidence: number;
   lat: number;
   lng: number;
@@ -53,7 +83,6 @@ const defaultAppliances: Appliance[] = [
     id: "1",
     type: "Microwave",
     building: "Killam Library",
-    distance: "50M",
     confidence: 95,
     lat: 44.6369,
     lng: -63.5903,
@@ -62,20 +91,18 @@ const defaultAppliances: Appliance[] = [
   },
   {
     id: "2",
-    type: "Microwave",
+    type: "Fridge",
     building: "Goldberg Bldg",
-    distance: "150M",
-    confidence: 95,
+    confidence: 90,
     lat: 44.6375,
     lng: -63.5915,
     floor: "2nd Floor",
-    room: "Common Area",
+    room: "Staff Kitchen",
   },
   {
     id: "3",
     type: "Microwave",
     building: "Killam Library",
-    distance: "50M",
     confidence: 95,
     lat: 44.6368,
     lng: -63.5901,
@@ -84,25 +111,33 @@ const defaultAppliances: Appliance[] = [
   },
   {
     id: "4",
-    type: "Microwave",
-    building: "Killam Library",
-    distance: "50M",
-    confidence: 95,
-    lat: 44.637,
-    lng: -63.5905,
+    type: "Fridge",
+    building: "Science Building",
+    confidence: 88,
+    lat: 44.6371,
+    lng: -63.59,
     floor: "Main Floor",
-    room: "Lounge",
+    room: "Commons",
   },
   {
     id: "5",
-    type: "Microwave",
+    type: "Fridge",
     building: "Killam Library",
-    distance: "50M",
-    confidence: 95,
+    confidence: 92,
     lat: 44.6367,
     lng: -63.5904,
     floor: "Basement",
     room: "Break Room",
+  },
+  {
+    id: "6",
+    type: "Microwave",
+    building: "Engineering Annex",
+    confidence: 85,
+    lat: 44.638,
+    lng: -63.591,
+    floor: "1st Floor",
+    room: "Student Hub",
   },
 ];
 
@@ -365,7 +400,16 @@ export default function App() {
                   </div>
                   <div className="text-right">
                     <p className="text-sm font-medium text-gray-900">
-                      {appliance.distance}
+                      {userLocation
+                        ? `${Math.round(
+                            getDistanceFromLatLonInM(
+                              userLocation[0],
+                              userLocation[1],
+                              appliance.lat,
+                              appliance.lng
+                            )
+                          )} m`
+                        : "— m"}
                     </p>
                   </div>
                 </div>
@@ -417,12 +461,77 @@ export default function App() {
                               appliance.lng
                             )
                           )
-                        : appliance.distance}{" "}
+                        : "—"}{" "}
                       m
                     </p>
                     <p className="text-xs">
                       Confidence: {appliance.confidence}%
                     </p>
+                    <div className="mt-3 flex gap-2">
+                      <button
+                        onClick={async () => {
+                          try {
+                            const res = await fetch(
+                              "http://localhost:4000/report",
+                              {
+                                method: "POST",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify({
+                                  applianceId: appliance.id,
+                                  atLocation: true,
+                                }),
+                              }
+                            );
+                            if (res.ok) {
+                              alert(
+                                "Thanks — reported present at this location."
+                              );
+                            } else {
+                              alert("Failed to send report");
+                            }
+                          } catch (e) {
+                            alert(
+                              "Error sending report. Is the server running?"
+                            );
+                          }
+                        }}
+                        className="px-3 py-1 bg-green-500 text-white rounded"
+                      >
+                        Yes — it's here
+                      </button>
+
+                      <button
+                        onClick={async () => {
+                          try {
+                            const res = await fetch(
+                              "http://localhost:4000/report",
+                              {
+                                method: "POST",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify({
+                                  applianceId: appliance.id,
+                                  atLocation: false,
+                                }),
+                              }
+                            );
+                            if (res.ok) {
+                              alert(
+                                "Thanks — reported not present at this location."
+                              );
+                            } else {
+                              alert("Failed to send report");
+                            }
+                          } catch (e) {
+                            alert(
+                              "Error sending report. Is the server running?"
+                            );
+                          }
+                        }}
+                        className="px-3 py-1 bg-red-500 text-white rounded"
+                      >
+                        No — not here
+                      </button>
+                    </div>
                   </div>
                 </Popup>
               </Marker>
