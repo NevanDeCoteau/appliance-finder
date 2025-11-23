@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import {
   MapContainer,
   TileLayer,
   Marker,
   Popup,
   useMap,
+  useMapEvent,
   Circle,
 } from "react-leaflet";
 import { Menu, X, Search } from "lucide-react";
@@ -155,6 +156,19 @@ function MapUpdater({
   return null;
 }
 
+// Capture clicks on the map (not on markers) and forward the lat/lng
+function MapClickHandler({
+  onClick,
+}: {
+  onClick: (coords: [number, number]) => void;
+}) {
+  useMapEvent("click", (e: any) => {
+    const { lat, lng } = e.latlng;
+    onClick([lat, lng]);
+  });
+  return null;
+}
+
 // Haversine formula for distance in meters
 function getDistanceFromLatLonInM(
   lat1: number,
@@ -240,6 +254,48 @@ export default function App() {
     }
   }, []);
 
+  // Load appliances from backend
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch("http://localhost:4000/appliances");
+        if (!res.ok) return;
+        const data = await res.json();
+        if (!cancelled && Array.isArray(data)) {
+          // ensure types: map numeric fields
+          const normalized: Appliance[] = data.map((d: any) => {
+            const rawType = String(d.type || "").toLowerCase();
+            let typeVal: "Microwave" | "Fridge" = "Microwave";
+            if (rawType.includes("fridge")) typeVal = "Fridge";
+            else if (rawType.includes("microwave")) typeVal = "Microwave";
+            else {
+              // fallback: capitalize first letter
+              const t = String(d.type || "");
+              typeVal = (t.charAt(0).toUpperCase() + t.slice(1)) as any;
+            }
+            return {
+              id: String(d.id),
+              type: typeVal,
+              building: d.building,
+              confidence: Number(d.confidence) || 0,
+              lat: Number(d.lat),
+              lng: Number(d.lng),
+              floor: d.floor || undefined,
+              room: d.room || undefined,
+            };
+          });
+          setAppliances(normalized);
+        }
+      } catch (e) {
+        console.warn("Failed to load appliances from server:", e);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const toggleType = (type: string) => {
     setSelectedTypes((prev) =>
       prev.includes(type) ? prev.filter((t) => t !== type) : [...prev, type]
@@ -249,15 +305,8 @@ export default function App() {
   const handleApplianceClick = (appliance: Appliance) => {
     setMapCenter([appliance.lat, appliance.lng]);
     setMapZoom(18);
-  };
-
-  const addAppliance = (appliance: Omit<Appliance, "id">) => {
-    const newAppliance = { ...appliance, id: Date.now().toString() };
-    setAppliances((prev) => [...prev, newAppliance]);
-  };
-
-  const removeAppliance = (id: string) => {
-    setAppliances((prev) => prev.filter((app) => app.id !== id));
+    // mark this clicked appliance as the user's current location
+    setUserLocation([appliance.lat, appliance.lng]);
   };
 
   return (
@@ -427,6 +476,14 @@ export default function App() {
             zoomControl={true}
           >
             <MapUpdater center={mapCenter} zoom={mapZoom} />
+            <MapClickHandler
+              onClick={(coords) => {
+                // clicking on the map (not markers) marks that spot as the user's location
+                setUserLocation(coords);
+                setMapCenter(coords);
+                setMapZoom(18);
+              }}
+            />
             <TileLayer
               attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
               url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
@@ -439,6 +496,14 @@ export default function App() {
                 icon={
                   appliance.type === "Microwave" ? microwaveIcon : fridgeIcon
                 }
+                eventHandlers={{
+                  click: () => {
+                    // clicking a marker marks that location as the user's current location
+                    setUserLocation([appliance.lat, appliance.lng]);
+                    setMapCenter([appliance.lat, appliance.lng]);
+                    setMapZoom(18);
+                  },
+                }}
               >
                 <Popup>
                   <div className="p-2">
@@ -579,7 +644,9 @@ export default function App() {
                 });
               }
             }}
-            className="absolute top-4 right-4 bg-white px-4 py-2 shadow rounded-lg hover:bg-gray-100"
+            // fixed so it's visible above the map and sidebar at all times
+            // absolute so it's positioned relative to the map/main area (top-right of map)
+            className="absolute top-4 right-4 z-50 bg-white px-4 py-2 shadow rounded-lg hover:bg-gray-100"
           >
             Find My Location
           </button>
