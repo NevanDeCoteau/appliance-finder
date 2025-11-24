@@ -64,9 +64,10 @@ http://localhost:5173/
 
 ## 📌 Using the App
 
-- A map will appear
-- You'll see pin markers across campus
-- Each pin represents a microwave or fridge
+- A map will appear.
+- Click anywhere to teleport!
+- You'll see pin markers across campus.
+- Each pin represents a microwave or fridge.
 - Click a pin to view details!
 
 ---
