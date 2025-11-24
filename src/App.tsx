@@ -79,68 +79,7 @@ interface Appliance {
 }
 
 // Default appliances
-const defaultAppliances: Appliance[] = [
-  {
-    id: "1",
-    type: "Microwave",
-    building: "Killam Library",
-    confidence: 95,
-    lat: 44.6369,
-    lng: -63.5903,
-    floor: "Ground Floor",
-    room: "Student Lounge",
-  },
-  {
-    id: "2",
-    type: "Fridge",
-    building: "Goldberg Bldg",
-    confidence: 90,
-    lat: 44.6375,
-    lng: -63.5915,
-    floor: "2nd Floor",
-    room: "Staff Kitchen",
-  },
-  {
-    id: "3",
-    type: "Microwave",
-    building: "Killam Library",
-    confidence: 95,
-    lat: 44.6368,
-    lng: -63.5901,
-    floor: "3rd Floor",
-    room: "Study Room",
-  },
-  {
-    id: "4",
-    type: "Fridge",
-    building: "Science Building",
-    confidence: 88,
-    lat: 44.6371,
-    lng: -63.59,
-    floor: "Main Floor",
-    room: "Commons",
-  },
-  {
-    id: "5",
-    type: "Fridge",
-    building: "Killam Library",
-    confidence: 92,
-    lat: 44.6367,
-    lng: -63.5904,
-    floor: "Basement",
-    room: "Break Room",
-  },
-  {
-    id: "6",
-    type: "Microwave",
-    building: "Engineering Annex",
-    confidence: 85,
-    lat: 44.638,
-    lng: -63.591,
-    floor: "1st Floor",
-    room: "Student Hub",
-  },
-];
+const defaultAppliances: Appliance[] = [];
 
 function MapUpdater({
   center,
